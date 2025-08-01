@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>DikenWeb Test</title>
+  <style>
+    body, html { 
+      margin: 0; 
+      height: 100%; 
+      overflow: hidden; 
+      font-family: Arial, sans-serif;
+    }
+    canvas { 
+      display: block; 
+      width: 100%; 
+      height: 100%; 
+      background: #222; 
+    }
+    #loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading">DikenWeb başlatılıyor...</div>
+  <canvas id="c"></canvas>
+
+  <script src="./dist/dikenweb.js"></script>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "jsimgui": "https://esm.sh/@mori2003/jsimgui"
+      }
+    }
+  </script>
+
+  <script type="module">
+    import { ImGui, ImGuiImplWeb } from "jsimgui";
+    
+    const canvas = document.getElementById("c");
+    const loadingElement = document.getElementById("loading");
+    
+    // Canvas boyutlarını ayarla
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // WebGL context'i al
+    const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+    if (!gl) {
+      alert("WebGL desteklenmiyor!");
+      throw new Error("WebGL desteklenmiyor");
+    }
+
+    // ImGui başlat
+    try {
+      await ImGuiImplWeb.InitWebGL(canvas);
+      console.log("ImGui başlatıldı");
+    } catch (error) {
+      console.error("ImGui başlatma hatası:", error);
+    }
+
+    // DikenWeb Core başlat
+    let core;
+    try {
+      core = new DikenWeb.Core(canvas);
+      core.init();
+      console.log("DikenWeb Core başlatıldı");
+    } catch (error) {
+      console.error("DikenWeb Core başlatma hatası:", error);
+      loadingElement.innerHTML = "DikenWeb başlatma hatası: " + error.message;
+      return;
+    }
+
+    // Renderer'ı Core'dan al (zaten init içinde oluşturuldu)
+    const renderer = core.renderer;
+    
+    // Basit sahne oluştur
+    const scene = new DikenWeb.Scene();
+    
+    // Küp nesnesi oluştur
+    const cube = new DikenWeb.GameObject("RotatingCube");
+    const cubeRenderer = cube.addComponent(new DikenWeb.CubeRenderer());
+    cubeRenderer.setColor(1, 0.5, 0); // Turuncu küp
+    
+    // Küpü biraz ileriye taşı
+    cube.transform.position.z = -5;
+    
+    // Sahneye ekle
+    scene.addGameObject(cube);
+    
+    // Küpü döndürmek için bir script component'i ekle
+    cube.addComponent(new class extends DikenWeb.Script {
+      update(deltaTime) {
+        // Küpü döndür
+        this.gameObject.transform.rotate(deltaTime, deltaTime * 0.5, 0);
+      }
+    });
+    
+    // Sahneyi yükle
+    core.loadScene(scene);
+    
+    // Loading elementini gizle
+    loadingElement.style.display = "none";
+    
+    // GUI için değişkenler
+    const guiState = {
+      rotationSpeed: 1.0,
+      cubeColor: [1.0, 0.5, 0.0],
+      showCube: true
+    };
+
+    function loop() {
+      try {
+        // ImGui render
+        ImGuiImplWeb.BeginRenderWebGL();
+        
+        // ImGui penceresi
+        ImGui.Begin("DikenWeb Kontrolleri");
+        ImGui.Text("FPS: " + Math.round(1000 / (performance.now() - (loop.lastTime || performance.now()))));
+        
+        ImGui.SliderFloat("Dönme Hızı", (value = guiState.rotationSpeed) => guiState.rotationSpeed = value, 0.0, 5.0);
+        
+        ImGui.ColorEdit3("Küp Rengi", guiState.cubeColor);
+        cubeRenderer.setColor(...guiState.cubeColor);
+        
+        ImGui.Checkbox("Küpü Göster", (value = guiState.showCube) => {
+          guiState.showCube = value;
+          cube.setActive(value);
+        });
+        
+        ImGui.Text("Küp Pozisyon:");
+        ImGui.Text(`X: ${cube.transform.position.x.toFixed(2)}`);
+        ImGui.Text(`Y: ${cube.transform.position.y.toFixed(2)}`);
+        ImGui.Text(`Z: ${cube.transform.position.z.toFixed(2)}`);
+        
+        ImGui.End();
+        
+        ImGuiImplWeb.EndRenderWebGL();
+        
+        // DikenWeb render
+        if (core.isRunning) {
+          // Core zaten kendi loop'unu yönetiyor
+        } else {
+          core.render();
+        }
+        
+        loop.lastTime = performance.now();
+        requestAnimationFrame(loop);
+      } catch (error) {
+        console.error("Render loop hatası:", error);
+      }
+    }
+    
+    // DikenWeb motorunu başlat
+    core.start();
+    
+    // ImGui loop'unu başlat
+    loop();
+    
+    // Window resize handler
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      if (renderer) {
+        renderer.setViewport(canvas.width, canvas.height);
+      }
+    });
+    
+  </script>
+</body>
+</html>

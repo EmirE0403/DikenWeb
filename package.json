@@ -1,0 +1,19 @@
+{
+  "name": "dikenweb",
+  "version": "1.0.0",
+  "description": "DikenWeb oyun motoru",
+  "main": "build.js",
+  "directories": {
+    "example": "examples"
+  },
+  "scripts": {
+    "build": "node build.js"
+  },
+  "keywords": ["webgl", "game-engine", "javascript"],
+  "author": "EmirE",
+  "license": "MIT",
+  "type": "module",
+  "devDependencies": {
+    "terser": "^5.43.1"
+  }
+}

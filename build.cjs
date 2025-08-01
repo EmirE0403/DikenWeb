@@ -1,7 +1,8 @@
-// build.js - ES Module versiyonu
-import fs from 'fs';
-import path from 'path';
-import { minify } from 'terser';
+// build.cjs - DikenWeb Build Script
+
+const fs = require('fs');
+const path = require('path');
+const { minify } = require('terser');
 
 const inputFiles = [
   'engine/core.js',
@@ -24,38 +25,24 @@ if (!fs.existsSync(outputDir)) {
 let combined = `
 // DikenWeb Engine v1.0.0 - Built ${new Date().toISOString()}
 // @author EmirE
-// Global namespace olarak DikenWeb tanımlanıyor
-var DikenWeb = DikenWeb || {};
-(function(global) {
+
 `;
 
 for (const file of inputFiles) {
   if (!fs.existsSync(file)) {
-    console.error(`❌ Dosya bulunamadı: ${file}`);
+    console.error('❌ Dosya bulunamadı: ' + file);
     process.exit(1);
   }
   
   let code = fs.readFileSync(file, 'utf-8');
 
-  // import ve export satırlarını kaldır ve global namespace'e ekle
+  // IIFE wrapper'ları koru, sadece export/import satırlarını kaldır
   code = code
-    .replace(/^\s*import .*?;?\s*$/gm, '')
-    .replace(/^\s*export\s+class\s+(\w+)/gm, (match, className) => {
-      return `global.DikenWeb.${className} = class ${className}`;
-    })
-    .replace(/^\s*export\s+function\s+(\w+)/gm, (match, funcName) => {
-      return `global.DikenWeb.${funcName} = function ${funcName}`;
-    })
-    .replace(/^\s*export\s+const\s+(\w+)\s*=\s*/gm, (match, constName) => {
-      return `global.DikenWeb.${constName} = `;
-    })
-    .replace(/^\s*export\s*{[^}]+};?\s*$/gm, '')
-    .replace(/^\s*export\s+default\s+/gm, '');
+    .replace(/^\s*export\s*/gm, '')
+    .replace(/^\s*import\s+.*$/gm, '');
 
-  combined += `\n// --- ${file} ---\n` + code;
+  combined += '// --- ' + file + ' ---\n' + code + '\n\n';
 }
-
-combined += '\n})(typeof window !== "undefined" ? window : this);\n';
 
 fs.writeFileSync(outputFile, combined, 'utf-8');
 console.log('✅ DikenWeb build tamamlandı:', outputFile);
@@ -83,7 +70,7 @@ console.log('✅ DikenWeb build tamamlandı:', outputFile);
       
       const originalSize = (combined.length / 1024).toFixed(2);
       const minifiedSize = (minified.code.length / 1024).toFixed(2);
-      console.log(`📊 Boyut: ${originalSize} KB → ${minifiedSize} KB`);
+      console.log('📊 Boyut: ' + originalSize + ' KB → ' + minifiedSize + ' KB');
     } else {
       console.error('❌ Minify başarısız:', minified.error);
     }

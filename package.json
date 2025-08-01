@@ -7,7 +7,7 @@
     "example": "examples"
   },
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.cjs"
   },
   "keywords": ["webgl", "game-engine", "javascript"],
   "author": "EmirE",
